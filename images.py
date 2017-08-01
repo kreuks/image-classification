@@ -1,7 +1,9 @@
-from keras.preprocessing.image import ImageDataGenerator
+import glob
+
+import numpy as np
 import tensorflow as tf
 from tensorflow.contrib.keras import preprocessing
-
+from tensorflow.python.framework import ops, dtypes
 
 
 class TensorModel(object):
@@ -30,42 +32,94 @@ class TensorModel(object):
             target_size=(28, 28),
             color_mode='grayscale',
             classes=classes,
-            class_mode='binary',
-            batch_size=32
+            class_mode='categorical',
+            batch_size=1000
         )
         return train_datagenerator
 
     def train_model(self, data_train, data_test):
-        X = tf.placeholder(tf.float32, [None, 784])
-        W = tf.Variable(tf.zeros([784, 2]))
+        X = tf.placeholder(tf.float32, [None, 128 * 128])
+        W = tf.Variable(tf.zeros([128 * 128, 2]))
         b = tf.Variable(tf.zeros([2]))
         y_hat = tf.nn.softmax(tf.matmul(X, W) + b)
         y = tf.placeholder(tf.float32, [None, 2])
-        sess = tf.Session()
-        init = tf.global_variables_initializer()
 
         cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=y, logits=y_hat))
         train_step = tf.train.GradientDescentOptimizer(.9).minimize(cross_entropy)
-        with sess.as_default():
+
+        images_train, labels_train, images_test, labels_test = self.create_tensor_list()
+        input_queue_train = tf.train.slice_input_producer([images_train, labels_train], shuffle=True)
+        input_queue_test = tf.train.slice_input_producer([images_test, labels_test], shuffle=True)
+
+        train_images, train_labels = self.decode_images(input_queue_train)
+        test_images, test_labels = self.decode_images(input_queue_test)
+
+        train_images, test_images = train_images / 255., test_images / 255.
+
+        image_batch_train, label_batch_train = tf.train.batch([train_images, train_labels], batch_size=100)
+        image_batch_test, label_batch_test = tf.train.batch([test_images, test_labels], batch_size=400)
+
+        init = tf.global_variables_initializer()
+        with tf.Session() as sess:
             sess.run(init)
-            for index, (batch_xs, batch_ys) in enumerate(data_train):
-                batch_xs = tf.reshape(batch_xs, [batch_xs.shape[0], -1]).eval()
-                batch_ys = [[0., 1.] if x == 1. else [1., 0.] for x in batch_ys]
-                if index % 100 == 0:
+            coord = tf.train.Coordinator()
+            threads = tf.train.start_queue_runners(coord=coord)
+
+            for _ in range(500):
+                image_batch_train = tf.reshape(image_batch_train, [int(image_batch_train.shape[0]), -1]).eval()
+                if _ % 100 == 0:
                     print 'cost_at_step {} :{}'.format(
-                        index % 100, cross_entropy.eval(feed_dict={X: batch_xs, y: batch_ys}) / 100
+                        _, cross_entropy.eval(feed_dict={X: image_batch_train, y: label_batch_train.eval()}) / 100
                     )
-                sess.run(train_step, feed_dict={X: batch_xs, y: batch_ys})
+                sess.run(train_step, feed_dict={X: image_batch_train, y: label_batch_train.eval()})
+
             correct_prediction = tf.equal(tf.argmax(y_hat, 1), tf.argmax(y, 1))
             accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
-            for data, labels in data_test:
-                print sess.run(accuracy, feed_dict={X: data, y: labels})
+
+            image_batch_test = tf.reshape(image_batch_test, [int(image_batch_test.shape[0]), -1]).eval()
+            print sess.run(accuracy, feed_dict={X: image_batch_test, y: label_batch_test.eval()})
+            print sess.run(tf.argmax(y, 1), feed_dict={y: label_batch_test.eval()})
+            print sess.run(tf.argmax(y_hat, 1), feed_dict={X: image_batch_test})
             tf.summary.FileWriter('logs', sess.graph)
 
+            coord.request_stop()
+            coord.join(threads)
+
+    def create_tensor_list(self):
+        image_list_train = (
+            glob.glob(TensorModel.TRAIN_FILES + TensorModel.CLASS[0] + '/*') +
+            glob.glob(TensorModel.TRAIN_FILES + TensorModel.CLASS[1] + '/*')
+        )
+
+        image_list_test = (
+            glob.glob(TensorModel.TEST_FILES + TensorModel.CLASS[0] + '/*') +
+            glob.glob(TensorModel.TEST_FILES + TensorModel.CLASS[1] + '/*')
+        )
+
+        train_labels = np.array([[1, 0]] * 500 + [[0, 1]] * 500)
+        test_labels = np.array([[1, 0]] * 200 + [[0, 1]] * 200)
+
+        image_tensor_train = ops.convert_to_tensor(image_list_train, dtype=dtypes.string)
+        label_tensor_train = ops.convert_to_tensor(train_labels, dtype=dtypes.int32)
+
+        image_tensor_test = ops.convert_to_tensor(image_list_test, dtype=dtypes.string)
+        label_tensor_test = ops.convert_to_tensor(test_labels, dtype=dtypes.int32)
+
+        return image_tensor_train, label_tensor_train, image_tensor_test, label_tensor_test
+
+    @staticmethod
+    def decode_images(input_queue):
+        labels = input_queue[1]
+        file_contents = tf.read_file(input_queue[0])
+        images = tf.image.decode_jpeg(
+            file_contents,
+            channels=1
+        )
+        images = tf.image.resize_images(images, [128, 128])
+        return images, labels
+
     def run(self):
-        training_data = self.load_train_data(self.TRAIN_FILES, self.CLASS)
-        test_data = self.load_train_data(self.TEST_FILES, self.CLASS)
-        self.train_model(training_data, test_data)
+        self.train_model(None, None)
 
 
 if __name__ == '__main__':
