@@ -5,6 +5,66 @@ import tensorflow as tf
 from tensorflow.contrib.keras import preprocessing
 from tensorflow.python.framework import ops, dtypes
 
+from constant import Data
+
+
+class ImageGenerator(object):
+    def __init__(self, resize=None, channel=None):
+        self.resize = resize if resize else [28, 28]
+        self.channel = channel if channel else 1
+        self.rescale = 1. / 255
+
+    @staticmethod
+    def create_tensor_list(path_images):
+        image_training_path = path_images + '/' + Data.TRAINING + '_' + Data.DATA + '/'
+        image_test_path = path_images + '/' + Data.TEST + '_' + Data.DATA + '/'
+
+        classes = [x.replace(image_training_path, '') for x in glob.glob(image_training_path + '*')]
+
+        image_list_train = []
+        image_list_test = []
+        label_list_train = []
+        label_list_test = []
+
+        for label, class_ in enumerate(classes):
+            categorical = [0] * len(classes)
+            categorical[label] = 1
+            image_list_train += glob.glob(image_training_path + class_ + '/*')
+            image_list_test += glob.glob(image_test_path + class_ + '/*')
+            label_list_train += [categorical] * len(glob.glob(image_training_path + class_ + '/*'))
+            label_list_test += [categorical] * len(glob.glob(image_test_path + class_ + '/*'))
+
+        return (
+            ops.convert_to_tensor(image_list_train, dtype=dtypes.string),
+            ops.convert_to_tensor(label_list_train, dtype=dtypes.int32),
+            ops.convert_to_tensor(image_list_test, dtype=dtypes.string),
+            ops.convert_to_tensor(label_list_test, dtype=dtypes.int32)
+        )
+
+    def decode_images(self, input_queue):
+        labels = input_queue[1]
+        file_contents = tf.read_file(input_queue[0])
+        images = tf.image.decode_jpeg(
+            file_contents,
+            channels=self.channel
+        )
+        images = tf.image.resize_images(images, self.resize)
+        return images, labels
+
+    def flow_directory(self, path_images):
+        images_train, labels_train, images_test, labels_test = self.create_tensor_list(path_images)
+        input_queue_train = tf.train.slice_input_producer([images_train, labels_train], shuffle=True)
+        input_queue_test = tf.train.slice_input_producer([images_test, labels_test], shuffle=True)
+
+        train_images, train_labels = self.decode_images(input_queue_train)
+        test_images, test_labels = self.decode_images(input_queue_test)
+
+        train_images, test_images = train_images / self.rescale, test_images / self.rescale
+
+        image_batch_train, label_batch_train = tf.train.batch([train_images, train_labels], batch_size=100)
+        image_batch_test, label_batch_test = tf.train.batch([test_images, test_labels], batch_size=400)
+        return image_batch_train, label_batch_train, image_batch_test, label_batch_test
+
 
 class TensorModel(object):
     TRAIN_FILES = 'images/catdog/training_data/'
@@ -38,8 +98,8 @@ class TensorModel(object):
         return train_datagenerator
 
     def train_model(self, data_train, data_test):
-        X = tf.placeholder(tf.float32, [None, 128 * 128])
-        W = tf.Variable(tf.zeros([128 * 128, 2]))
+        X = tf.placeholder(tf.float32, [None, 28 * 28])
+        W = tf.Variable(tf.zeros([28 * 28, 2]))
         b = tf.Variable(tf.zeros([2]))
         y_hat = tf.nn.softmax(tf.matmul(X, W) + b)
         y = tf.placeholder(tf.float32, [None, 2])
@@ -47,17 +107,10 @@ class TensorModel(object):
         cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=y, logits=y_hat))
         train_step = tf.train.GradientDescentOptimizer(.9).minimize(cross_entropy)
 
-        images_train, labels_train, images_test, labels_test = self.create_tensor_list()
-        input_queue_train = tf.train.slice_input_producer([images_train, labels_train], shuffle=True)
-        input_queue_test = tf.train.slice_input_producer([images_test, labels_test], shuffle=True)
-
-        train_images, train_labels = self.decode_images(input_queue_train)
-        test_images, test_labels = self.decode_images(input_queue_test)
-
-        train_images, test_images = train_images / 255., test_images / 255.
-
-        image_batch_train, label_batch_train = tf.train.batch([train_images, train_labels], batch_size=100)
-        image_batch_test, label_batch_test = tf.train.batch([test_images, test_labels], batch_size=400)
+        image_generator = ImageGenerator()
+        image_batch_train, label_batch_train, image_batch_test, label_batch_test = image_generator.flow_directory(
+            'images/catdog'
+        )
 
         init = tf.global_variables_initializer()
         with tf.Session() as sess:
