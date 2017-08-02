@@ -1,0 +1,9 @@
+{
+  "image": {
+    "resize": [28, 28],
+    "num_channel": 3,
+    "rescale": 255,
+    "batch_size": 100
+  },
+  "train": {}
+}
