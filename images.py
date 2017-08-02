@@ -1,12 +1,14 @@
 import glob
 
-import numpy as np
 import tensorflow as tf
 from tensorflow.contrib.keras import preprocessing
 from tensorflow.python.framework import ops, dtypes
 
-from constant import Data, Image
+from constant import Data, Image, Train
 from config import config
+
+
+tf.logging.set_verbosity(tf.logging.DEBUG)
 
 
 class ImageGenerator(object):
@@ -70,6 +72,10 @@ class ImageGenerator(object):
 
 
 class TensorModel(object):
+    def __init__(self, config=config):
+        self._config = config
+        self.num_epoch = self._config[Train.TRAIN][Train.NUM_EPOCH]
+
     @staticmethod
     def load_train_data(path, classes):
         train_datagen = preprocessing.image.ImageDataGenerator(
@@ -87,6 +93,8 @@ class TensorModel(object):
             batch_size=1000
         )
         return train_datagenerator
+
+    def
 
     def train_model(self, data_train, data_test):
         X = tf.placeholder(tf.float32, [None, 28 * 28])
@@ -109,7 +117,7 @@ class TensorModel(object):
             coord = tf.train.Coordinator()
             threads = tf.train.start_queue_runners(coord=coord)
 
-            for _ in range(500):
+            for _ in range(self.num_epoch):
                 image_batch_train = tf.reshape(image_batch_train, [int(image_batch_train.shape[0]), -1]).eval()
                 if _ % 100 == 0:
                     print 'cost_at_step {} :{}'.format(
@@ -135,4 +143,5 @@ class TensorModel(object):
 
 if __name__ == '__main__':
     tensor = TensorModel()
-    tensor.run()
+    tf.app.run(main=tensor.run())
+

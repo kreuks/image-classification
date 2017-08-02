@@ -6,6 +6,11 @@ class Image(object):
     NUM_CHANNEL = 'num_channel'
 
 
+class Train(object):
+    TRAIN = 'train'
+    NUM_EPOCH = 'num_epoch'
+
+
 class Data(object):
     DATA = 'data'
     DATASET = 'dataset'

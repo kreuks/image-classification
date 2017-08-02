@@ -1,9 +1,11 @@
 {
   "image": {
     "resize": [28, 28],
-    "num_channel": 3,
+    "num_channel": 1,
     "rescale": 255,
     "batch_size": 100
   },
-  "train": {}
+  "train": {
+    "num_epoch": 1000
+  }
 }
