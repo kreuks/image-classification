@@ -94,8 +94,6 @@ class TensorModel(object):
         )
         return train_datagenerator
 
-    def
-
     def train_model(self, data_train, data_test):
         X = tf.placeholder(tf.float32, [None, 28 * 28])
         W = tf.Variable(tf.zeros([28 * 28, 2]))
