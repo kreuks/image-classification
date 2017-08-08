@@ -52,7 +52,7 @@ class Pipelines(object):
             sess.run(init)
             train_writer = tf.summary.FileWriter('logs/nielsen-net', sess.graph)
 
-            for i in xrange(10):
+            for i in xrange(self.num_epoch):
                 images, labels = self.mnist.train.next_batch(100)
                 summary, _ = sess.run(
                     [loss_summary, train_step],
