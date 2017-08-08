@@ -1,5 +1,4 @@
 from config import config
-from tensorflow.examples.tutorials.mnist import input_data as mnist_data
 import tensorflow as tf
 from model import Model
 from images import ImageGenerator
@@ -11,7 +10,6 @@ class Pipelines(object):
     def __init__(self, config=config):
         self._config = config
         self.num_epoch = self._config[Train.TRAIN][Train.NUM_EPOCH]
-        self.mnist = mnist_data.read_data_sets('MNIST_data', one_hot=True)
         self.model = getattr(Model, self._config[Train.TRAIN][Train.MODEL])
 
     def main(self):
@@ -26,10 +24,11 @@ class Pipelines(object):
         logits = self.model(
             x,
             num_classes=10,
-            is_training=True,
+            is_training=is_training,
             dropout_keep_prob=0.5,
             scope='NielsenNet'
         )
+
         cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=y_actual))
         correct_prediction = tf.equal(tf.argmax(logits, 1), tf.argmax(y_actual, 1))
         accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
@@ -39,8 +38,8 @@ class Pipelines(object):
         accuracy_summary = tf.summary.scalar('accuracy', accuracy)
 
         eval_data = {
-            x: ImageGenerator(config).resize_images(self.mnist.validation.images),
-            y_actual: self.mnist.validation.labels,
+            x: image_generator.resize_mnist_images(image_generator.mnist.validation.images),
+            y_actual: image_generator.mnist.validation.labels,
             is_training: False
         }
 
@@ -53,10 +52,10 @@ class Pipelines(object):
             train_writer = tf.summary.FileWriter('logs/nielsen-net', sess.graph)
 
             for i in xrange(self.num_epoch):
-                images, labels = self.mnist.train.next_batch(100)
+                images, labels = image_generator.mnist.train.next_batch(100)
                 summary, _ = sess.run(
                     [loss_summary, train_step],
-                    feed_dict={x: ImageGenerator(config).resize_images(images), y_actual: labels, is_training: True}
+                    feed_dict={x: ImageGenerator(config).resize_mnist_images(images), y_actual: labels, is_training: True}
                 )
                 train_writer.add_summary(summary, i)
 
