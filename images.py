@@ -1,14 +1,14 @@
 import glob
 
-import tensorflow as tf
-from tensorflow.contrib.keras import preprocessing
-from tensorflow.python.framework import ops, dtypes
+import numpy as np
 
 from constant import Data, Image, Train
 from config import config
-
-
-tf.logging.set_verbosity(tf.logging.DEBUG)
+import tensorflow as tf
+from tensorflow.contrib.keras import preprocessing
+from tensorflow.contrib import slim
+from tensorflow.python.framework import ops, dtypes
+from tensorflow.examples.tutorials.mnist import input_data as mnist_data
 
 
 class ImageGenerator(object):
@@ -70,12 +70,18 @@ class ImageGenerator(object):
         image_batch_test, label_batch_test = tf.train.batch([test_images, test_labels], batch_size=self.batch_size)
         return image_batch_train, label_batch_train, image_batch_test, label_batch_test
 
+    def resize_images(self, images):
 
-class TensorModel(object):
-    def __init__(self, config=config):
-        self._config = config
-        self.num_epoch = self._config[Train.TRAIN][Train.NUM_EPOCH]
+        MEAN = np.mean(images)
+        STD = np.std(images)
 
+        reshaped = (images - MEAN) / STD
+        reshaped = np.reshape(reshaped, [-1, 28, 28, 1])
+
+        return reshaped
+
+
+class ImageGeneratorKeras:
     @staticmethod
     def load_train_data(path, classes):
         train_datagen = preprocessing.image.ImageDataGenerator(
@@ -93,6 +99,87 @@ class TensorModel(object):
             batch_size=1000
         )
         return train_datagenerator
+
+
+class TensorModel(object):
+    def __init__(self, config=config):
+        self._config = config
+        self.num_epoch = self._config[Train.TRAIN][Train.NUM_EPOCH]
+        self.mnist = mnist_data.read_data_sets('MNIST_data', one_hot=True)
+
+
+    @staticmethod
+    def nielsen_net(inputs, is_training, scope='NielsenNet'):
+        with tf.variable_scope(scope, 'NielsenNet'):
+            # First Group: Convolution + Pooling 28x28x1 => 28x28x20 => 14x14x20
+            net = slim.conv2d(inputs, 20, [5, 5], padding='SAME', scope='layer1-conv')
+            net = slim.max_pool2d(net, 2, stride=2, scope='layer2-max-pool')
+
+            # Second Group: Convolution + Pooling 14x14x20 => 10x10x40 => 5x5x40
+            net = slim.conv2d(net, 40, [5, 5], padding='VALID', scope='layer3-conv')
+            net = slim.max_pool2d(net, 2, stride=2, scope='layer4-max-pool')
+
+            # Reshape: 5x5x40 => 1000x1
+            net = tf.reshape(net, [-1, 5 * 5 * 40])
+
+            # Fully Connected Layer: 1000x1 => 1000x1
+            net = slim.fully_connected(net, 1000, scope='layer5')
+            net = slim.dropout(net, is_training=is_training, scope='layer5-dropout')
+
+            # Second Fully Connected: 1000x1 => 1000x1
+            net = slim.fully_connected(net, 1000, scope='layer6')
+            net = slim.dropout(net, is_training=is_training, scope='layer6-dropout')
+
+            # Output Layer: 1000x1 => 10x1
+            net = slim.fully_connected(net, 10, scope='output')
+            net = slim.dropout(net, is_training=is_training, scope='output-dropout')
+
+            return net
+
+    @staticmethod
+    def model(inputs,
+               is_training=True,
+               spatial_squeeze=True,
+               scope='NielsenNet'):
+        """
+        Args:
+          inputs: a tensor of size [batch_size, height, width, channels].
+          num_classes: number of predicted classes.
+          is_training: whether or not the model is being trained.
+          dropout_keep_prob: the probability that activations are kept in the dropout
+            layers during training.
+          spatial_squeeze: whether or not should squeeze the spatial dimensions of the
+            outputs. Useful to remove unnecessary dimensions for classification.
+          scope: Optional scope for the variables.
+          fc_conv_padding: the type of padding to use for the fully connected layer
+            that is implemented as a convolutional layer. Use 'SAME' padding if you
+            are applying the network in a fully convolutional manner and want to
+            get a prediction map downsampled by a factor of 32 as an output.
+            Otherwise, the output prediction map will be (input / 32) - 6 in case of
+            'VALID' padding.
+
+
+        Returns:
+          the last op containing the log predictions and end_points dict.
+        """
+        with tf.variable_scope(scope, 'NielsenNet'):
+            net = slim.conv2d(inputs, 20, [5, 5], padding='SAME', scope='conv1')
+            net = slim.max_pool2d(net, 2, stride=2, scope='pool')
+
+            net = slim.conv2d(net, 40, [5, 5], padding='VALID', scope='conv2')
+            net = slim.max_pool2d(net, 2, stride=2, scope='pool2')
+
+            net = tf.reshape(net, [-1, 5 * 5 * 40])
+
+            net = slim.fully_connected(net, 1000, scope='full_connected1')
+            net = slim.dropout(net, is_training=is_training, scope='dropout1')
+
+            net = slim.fully_connected(net, 1000, scope='full_connected2')
+            net = slim.dropout(net, is_training=is_training, scope='dropout2')
+
+            net = slim.fully_connected(net, 10, scope='output')
+            net = slim.dropout(net, is_training=is_training, scope='output-dropout')
+            return net
 
     def train_model(self, data_train, data_test):
         X = tf.placeholder(tf.float32, [None, 28 * 28])
@@ -135,11 +222,73 @@ class TensorModel(object):
             coord.request_stop()
             coord.join(threads)
 
+    def resize_images(self, images):
+
+        MEAN = np.mean(images)
+        STD = np.std(images)
+
+        reshaped = (images - MEAN) / STD
+        reshaped = np.reshape(reshaped, [-1, 28, 28, 1])
+
+        return reshaped
+
     def run(self):
-        self.train_model(None, None)
+        x = tf.placeholder(tf.float32, shape=[None, 28, 28, 1], name='Inputs')
+        y_actual = tf.placeholder(tf.float32, shape=[None, 10], name='Labels')
+        is_training = tf.placeholder(tf.bool, name='IsTraining')
+        image_generator = ImageGenerator(config=config)
+        image_batch_train, label_batch_train, image_batch_test, label_batch_test = image_generator.flow_directory(
+            'images/catdog'
+        )
+
+        logits = self.model(
+            x,
+            num_classes=10,
+            is_training=True,
+            dropout_keep_prob=0.5,
+            scope='NielsenNet'
+        )
+        cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=y_actual))
+        correct_prediction = tf.equal(tf.argmax(logits, 1), tf.argmax(y_actual, 1))
+        accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
+        train_step = tf.train.MomentumOptimizer(0.01, 0.5).minimize(cross_entropy)
+
+        loss_summary = tf.summary.scalar('loss', cross_entropy)
+        accuracy_summary = tf.summary.scalar('accuracy', accuracy)
+
+        init = tf.global_variables_initializer()
+        with tf.Session() as sess:
+            sess.run(init)
+            coord = tf.train.Coordinator()
+            threads = tf.train.start_queue_runners(coord=coord)
+
+            sess.run(tf.global_variables_initializer())
+            train_writer = tf.summary.FileWriter('logs/nielsen-net', sess.graph)
+
+            eval_data = {
+                x: image_batch_test.eval(),
+                y_actual: label_batch_test.eval(),
+                is_training: False
+            }
+
+            for i in xrange(1000):
+                # image_batch_train = tf.reshape(image_batch_train, [int(image_batch_train.shape[0]), -1]).eval()eval
+                # images, labels = self.mnist.train.next_batch(100)
+                summary, _ = sess.run([loss_summary, train_step],
+                                      feed_dict={x: image_batch_train, y_actual: label_batch_train.eval(), is_training: True})
+                train_writer.add_summary(summary, i)
+
+                if i % 1000 == 0:
+                    summary, acc = sess.run([accuracy_summary, accuracy], feed_dict=eval_data)
+                    train_writer.add_summary(summary, i)
+                    print("Step: %5d, Validation Accuracy = %5.2f%%" % (i, acc * 100))
+
+            coord.request_stop()
+            coord.join(threads)
+
+        # self.train_model(None, None)
 
 
 if __name__ == '__main__':
     tensor = TensorModel()
     tf.app.run(main=tensor.run())
-

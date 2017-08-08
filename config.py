@@ -1,4 +1,5 @@
 import json
 
-with open('configuration.json', 'r') as file:
-    config = json.load(file)
+
+with open('configuration.json', 'r') as f:
+    config = json.load(f)

@@ -9,6 +9,7 @@ class Image(object):
 class Train(object):
     TRAIN = 'train'
     NUM_EPOCH = 'num_epoch'
+    MODEL = 'model'
 
 
 class Data(object):
