@@ -14,7 +14,7 @@ class Pipelines(object):
         self.mnist = mnist_data.read_data_sets('MNIST_data', one_hot=True)
         self.model = getattr(Model, self._config[Train.TRAIN][Train.MODEL])
 
-    def run(self):
+    def main(self):
         x = tf.placeholder(tf.float32, shape=[None, 28, 28, 1], name='inputs')
         y_actual = tf.placeholder(tf.float32, shape=[None, 10], name='labels')
         is_training = tf.placeholder(tf.bool, name='is_training')
@@ -38,6 +38,12 @@ class Pipelines(object):
         loss_summary = tf.summary.scalar('loss', cross_entropy)
         accuracy_summary = tf.summary.scalar('accuracy', accuracy)
 
+        eval_data = {
+            x: ImageGenerator(config).resize_images(self.mnist.validation.images),
+            y_actual: self.mnist.validation.labels,
+            is_training: False
+        }
+
         init = tf.global_variables_initializer()
         with tf.Session() as sess:
             coord = tf.train.Coordinator()
@@ -46,12 +52,7 @@ class Pipelines(object):
             sess.run(init)
             train_writer = tf.summary.FileWriter('logs/nielsen-net', sess.graph)
 
-            eval_data = {
-                x: ImageGenerator(config).resize_images(self.mnist.validation.images),
-                y_actual: self.mnist.validation.labels,
-                is_training: False
-            }
-            for i in xrange(self.num_epoch):
+            for i in xrange(10):
                 images, labels = self.mnist.train.next_batch(100)
                 summary, _ = sess.run(
                     [loss_summary, train_step],
@@ -70,4 +71,4 @@ class Pipelines(object):
 
 if __name__ == '__main__':
     pipeline = Pipelines()
-    tf.app.run(main=pipeline.run())
+    pipeline.main()
