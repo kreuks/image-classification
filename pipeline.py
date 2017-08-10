@@ -13,7 +13,7 @@ class Pipelines(object):
         self.model = getattr(Model, self._config[Train.TRAIN][Train.MODEL])
 
     def main(self):
-        x = tf.placeholder(tf.float32, shape=[None, 28, 28, 1], name='inputs')
+        x = tf.placeholder(tf.float32, shape=[None, 150, 150, 3], name='inputs')
         y_actual = tf.placeholder(tf.float32, shape=[None, 2], name='labels')
         is_training = tf.placeholder(tf.bool, name='is_training')
         image_generator = ImageGenerator(config=config)
@@ -47,11 +47,9 @@ class Pipelines(object):
 
             for i in xrange(self.num_epoch):
                 # images, labels = image_generator.mnist.train.next_batch(100)
-                image_batch_train = image_batch_train.eval()
-                # print image_batch_train.shape
-                summary, _ = sess.run(
-                    [loss_summary, train_step],
-                    feed_dict={x: image_batch_train, y_actual: label_batch_train.eval(), is_training: True}
+                summary, _, accuracy_train = sess.run(
+                    [loss_summary, train_step, accuracy],
+                    feed_dict={x: image_batch_train.eval(), y_actual: label_batch_train.eval(), is_training: True}
                 )
                 train_writer.add_summary(summary, i)
 
@@ -59,13 +57,15 @@ class Pipelines(object):
                     summary, acc = sess.run(
                         [accuracy_summary, accuracy],
                         feed_dict={
-                            x: image_batch_test,
+                            x: image_batch_test.eval(),
                             y_actual: label_batch_test.eval(),
                             is_training: False
                         }
                     )
                     train_writer.add_summary(summary, i)
-                    print("Step: %5d, Validation Accuracy = %5.2f%%" % (i, acc * 100))
+                    print 'Step: {}, Training Accuracy = {} - Validation Accuracy = {}'.format(
+                        i, (accuracy_train * 100), (acc * 100)
+                    )
 
             coord.request_stop()
             coord.join(threads)

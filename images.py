@@ -24,7 +24,7 @@ class ImageGenerator(object):
     @staticmethod
     def create_tensor_list(path_images):
         image_training_path = path_images + '/' + Data.TRAINING + '_' + Data.DATA + '/'
-        image_test_path = path_images + '/' + Data.TEST + '_' + Data.DATA + '/'
+        image_test_path = path_images + '/' + Data.TESTING + '_' + Data.DATA + '/'
 
         classes = [x.replace(image_training_path, '') for x in glob.glob(image_training_path + '*')]
 
