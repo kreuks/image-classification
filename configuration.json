@@ -3,10 +3,11 @@
     "resize": [150, 150],
     "num_channel": 3,
     "rescale": 255,
-    "batch_size": 100
+    "batch_size": 100,
+    "class_mode": "binary"
   },
   "train": {
-    "num_epoch": 5000,
-    "model": "nielsen_net"
+    "num_epoch": 1000,
+    "model": "simple_keras"
   }
 }

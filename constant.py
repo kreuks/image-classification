@@ -1,9 +1,14 @@
+BINARY = 'binary'
+CATEGORICAL = 'categorical'
+
+
 class Image(object):
     IMAGE = 'image'
     BATCH_SIZE = 'batch_size'
     RESCALE = 'rescale'
     RESIZE = 'resize'
     NUM_CHANNEL = 'num_channel'
+    CLASS_MODE = 'class_mode'
 
 
 class Train(object):

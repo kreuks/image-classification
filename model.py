@@ -20,8 +20,6 @@ class Model(object):
 
             net = slim.conv2d(net, 40, [5, 5], padding='VALID', scope='layer3-conv')
             net = slim.max_pool2d(net, 2, stride=2, scope='layer4-max-pool')
-            print slim.flatten(net).shape
-            print tf.reshape(net, [-1, 35 * 35 * 40]).shape
 
             net = slim.fully_connected(net, 35 * 35 * 40, scope='layer5')
             net = slim.dropout(net, dropout_keep_prob, is_training=is_training, scope='layer5-dropout')
@@ -86,4 +84,5 @@ class Model(object):
         model.compile(loss='binary_crossentropy',
                       optimizer='rmsprop',
                       metrics=['accuracy'])
+
         return model

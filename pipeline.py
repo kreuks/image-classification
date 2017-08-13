@@ -1,9 +1,9 @@
 from config import config
 import tensorflow as tf
 from model import Model
-from images import ImageGenerator
+from images import ImageGenerator, ImageGeneratorKeras
 
-from constant import Train
+from constant import Train, Image
 
 
 class Pipelines(object):
@@ -12,7 +12,32 @@ class Pipelines(object):
         self.num_epoch = self._config[Train.TRAIN][Train.NUM_EPOCH]
         self.model = getattr(Model, self._config[Train.TRAIN][Train.MODEL])
 
-    def main(self):
+    def keras(self):
+        image_generator = ImageGenerator(config=config)
+        image_batch_train, label_batch_train, image_batch_test, label_batch_test = image_generator.flow_directory(
+            'images/catdog'
+        )
+        test = ImageGeneratorKeras().load_train_data('images/catdog/testing_data')
+        train = ImageGeneratorKeras().load_train_data('images/catdog/training_data')
+        init = tf.global_variables_initializer()
+        with tf.Session() as sess:
+            sess.run(init)
+            coord = tf.train.Coordinator()
+            threads = tf.train.start_queue_runners(coord=coord)
+
+            model_ = self.model(input_shape=(150, 150, 3))
+            model_.fit_generator(
+                train,
+                steps_per_epoch=self._config[Image.IMAGE][Image.BATCH_SIZE],
+                epochs=self.num_epoch,
+                validation_data=test,
+                validation_steps=4
+            )
+
+            coord.request_stop()
+            coord.join(threads)
+
+    def tensor_flow(self):
         x = tf.placeholder(tf.float32, shape=[None, 150, 150, 3], name='inputs')
         y_actual = tf.placeholder(tf.float32, shape=[None, 2], name='labels')
         is_training = tf.placeholder(tf.bool, name='is_training')
@@ -73,4 +98,4 @@ class Pipelines(object):
 
 if __name__ == '__main__':
     pipeline = Pipelines()
-    pipeline.main()
+    pipeline.keras()

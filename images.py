@@ -2,7 +2,7 @@ import glob
 
 import numpy as np
 
-from constant import Data, Image
+from constant import Data, Image, BINARY, CATEGORICAL
 import tensorflow as tf
 from tensorflow.contrib.keras import preprocessing
 from tensorflow.python.framework import ops, dtypes
@@ -21,8 +21,7 @@ class ImageGenerator(object):
         self.rescale = self._config[Image.IMAGE][Image.RESCALE]
         self.batch_size = self._config[Image.IMAGE][Image.BATCH_SIZE]
 
-    @staticmethod
-    def create_tensor_list(path_images):
+    def create_tensor_list(self, path_images):
         image_training_path = path_images + '/' + Data.TRAINING + '_' + Data.DATA + '/'
         image_test_path = path_images + '/' + Data.TESTING + '_' + Data.DATA + '/'
 
@@ -34,12 +33,18 @@ class ImageGenerator(object):
         label_list_test = []
 
         for label, class_ in enumerate(classes):
-            categorical = [0] * len(classes)
-            categorical[label] = 1
+            len_training_data = len(glob.glob(image_training_path + class_ + '/*'))
+            len_testing_data = len(glob.glob(image_test_path + class_ + '/*'))
+            if self._config[Image.IMAGE][Image.CLASS_MODE] == CATEGORICAL:
+                categorical = [0] * len(classes)
+                categorical[label] = 1
+                label_list_train += [categorical] * len_training_data
+                label_list_test += [categorical] * len_testing_data
+            elif self._config[Image.IMAGE][Image.CLASS_MODE] == BINARY:
+                label_list_train += [label] * len_training_data
+                label_list_test += [label] * len_testing_data
             image_list_train += glob.glob(image_training_path + class_ + '/*')
             image_list_test += glob.glob(image_test_path + class_ + '/*')
-            label_list_train += [categorical] * len(glob.glob(image_training_path + class_ + '/*'))
-            label_list_test += [categorical] * len(glob.glob(image_test_path + class_ + '/*'))
 
         return (
             ops.convert_to_tensor(image_list_train, dtype=dtypes.string),
@@ -81,19 +86,19 @@ class ImageGenerator(object):
 
 class ImageGeneratorKeras:
     @staticmethod
-    def load_train_data(path, classes):
-        train_datagen = preprocessing.image.ImageDataGenerator(
+    def load_train_data(path, classes=None):
+        datagen = preprocessing.image.ImageDataGenerator(
             rescale=1. / 255,
             shear_range=0.2,
             zoom_range=0.2,
             horizontal_flip=True
         )
-        train_datagenerator = train_datagen.flow_from_directory(
+        datagenerator = datagen.flow_from_directory(
             path,
-            target_size=(28, 28),
-            color_mode='grayscale',
+            target_size=(150, 150),
+            color_mode='rgb',
             classes=classes,
-            class_mode='categorical',
-            batch_size=1000
+            class_mode='binary',
+            batch_size=100
         )
-        return train_datagenerator
+        return datagenerator
