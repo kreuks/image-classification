@@ -21,8 +21,8 @@ This is just example usage of tensorflow and for research purpose
 > for deep neural networks. cuDNN provides highly tuned implementations for standard routines such as
 > forward and backward convolution, pooling, normalization, and activation layers.
 > cuDNN is part of the NVIDIA Deep Learning SDK.
-* Register at [NVIDIA Developer program](https://developer.nvidia.com/developer-program)
-* Download version 5.1 for CUDA 8.0 (tar version)
+* You need to register at [NVIDIA Developer program](https://developer.nvidia.com/developer-program) in order to download cuDNN
+* Download cuDNN version 5.1 for CUDA 8.0 (tar version)
 * scp to your machine and run
 ```
 tar xvzf [filename].tgz
@@ -40,7 +40,7 @@ Placed your data training in `images` folder with `training_data` folder contain
 containing your testing data
 example:
 
-.
+```
 +-- images
 |   +-- catdog
 |       +-- training_data
@@ -61,3 +61,4 @@ example:
 |               +-- dog10001.jpg
 |               +-- dog10002.jpg
 |               +-- ...
+```
