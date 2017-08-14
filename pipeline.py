@@ -22,15 +22,15 @@ class Pipelines(object):
         image_batch_train, label_batch_train, image_batch_test, label_batch_test = image_generator.flow_directory(
             'images/catdog'
         )
-        test = ImageGeneratorKeras().load_train_data('images/catdog/testing_data')
-        train = ImageGeneratorKeras().load_train_data('images/catdog/training_data')
+        test = ImageGeneratorKeras(self._config).load_train_data('images/catdog/testing_data')
+        train = ImageGeneratorKeras(self._config).load_train_data('images/catdog/training_data')
         init = tf.global_variables_initializer()
         with tf.Session() as sess:
             sess.run(init)
             coord = tf.train.Coordinator()
             threads = tf.train.start_queue_runners(coord=coord)
 
-            model_ = self.model(input_shape=(150, 150, 3))
+            model_ = self.model(input_shape=(244, 244, 3))
             model_.fit_generator(
                 train,
                 steps_per_epoch=self._config[Image.IMAGE][Image.BATCH_SIZE],
@@ -54,9 +54,8 @@ class Pipelines(object):
             x = image.img_to_array(img)
             x = np.expand_dims(x, axis=0)
             self.model = load_model(MODEL_PATH)
-            prediction = self.model.predict_classes(x)
+            prediction = self.model.predict_proba(x)
             return prediction
-
 
     def tensor_flow(self):
         x = tf.placeholder(tf.float32, shape=[None, 150, 150, 3], name='inputs')
@@ -119,4 +118,5 @@ class Pipelines(object):
 
 if __name__ == '__main__':
     pipeline = Pipelines()
-    pipeline.keras_predict()
+    pipeline.keras()
+    # print pipeline.keras_predict('cat.1.jpg')

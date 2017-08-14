@@ -2,11 +2,12 @@ import glob
 
 import numpy as np
 
-from constant import Data, Image, BINARY, CATEGORICAL
-import tensorflow as tf
 from tensorflow.contrib.keras import preprocessing
-from tensorflow.python.framework import ops, dtypes
 from tensorflow.examples.tutorials.mnist import input_data as mnist_data
+from tensorflow.python.framework import ops, dtypes
+import tensorflow as tf
+
+from constant import Data, Image, BINARY, CATEGORICAL
 
 
 class ImageGenerator(object):
@@ -85,20 +86,26 @@ class ImageGenerator(object):
 
 
 class ImageGeneratorKeras:
-    @staticmethod
-    def load_train_data(path, classes=None):
+    def __init__(self, config):
+        self._config = config
+        self.resize = self._config[Image.IMAGE][Image.RESIZE]
+        self.num_channel = self._config[Image.IMAGE][Image.NUM_CHANNEL]
+        self.rescale = self._config[Image.IMAGE][Image.RESCALE]
+        self.batch_size = self._config[Image.IMAGE][Image.BATCH_SIZE]
+
+    def load_train_data(self, path, classes=None):
         datagen = preprocessing.image.ImageDataGenerator(
-            rescale=1. / 255,
+            rescale=1. / self.rescale,
             shear_range=0.2,
             zoom_range=0.2,
             horizontal_flip=True
         )
         datagenerator = datagen.flow_from_directory(
             path,
-            target_size=(150, 150),
-            color_mode='rgb',
+            target_size=tuple(self.resize),
+            color_mode='rgb' if self.num_channel == 3 else 'grayscale',
             classes=classes,
-            class_mode='binary',
-            batch_size=100
+            class_mode='categorical',
+            batch_size=self.batch_size
         )
         return datagenerator

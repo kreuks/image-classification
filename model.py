@@ -1,9 +1,10 @@
 import tensorflow as tf
+from keras import Input
 from tensorflow.contrib import slim
 from keras.models import Sequential
-from keras.layers import Conv2D, MaxPooling2D
+from keras.layers import Conv2D, MaxPooling2D, GlobalAveragePooling2D, GlobalMaxPooling2D
 from keras.layers import Activation, Dropout, Flatten, Dense
-
+from keras.models import Model as ModelKeras
 
 class Model(object):
     @staticmethod
@@ -80,6 +81,60 @@ class Model(object):
         model.add(Dropout(0.5))
         model.add(Dense(1))
         model.add(Activation('sigmoid'))
+
+        model.compile(loss='binary_crossentropy',
+                      optimizer='rmsprop',
+                      metrics=['accuracy'])
+
+        return model
+
+    @staticmethod
+    def VGG19(input_shape, pooling='max', include_top=True, num_classes=2):
+        img_input = Input(shape=input_shape)
+        # Block 1
+        x = Conv2D(64, (3, 3), activation='relu', padding='same', name='block1_conv1')(img_input)
+        x = Conv2D(64, (3, 3), activation='relu', padding='same', name='block1_conv2')(x)
+        x = MaxPooling2D((2, 2), strides=(2, 2), name='block1_pool')(x)
+
+        # Block 2
+        x = Conv2D(128, (3, 3), activation='relu', padding='same', name='block2_conv1')(x)
+        x = Conv2D(128, (3, 3), activation='relu', padding='same', name='block2_conv2')(x)
+        x = MaxPooling2D((2, 2), strides=(2, 2), name='block2_pool')(x)
+
+        # Block 3
+        x = Conv2D(256, (3, 3), activation='relu', padding='same', name='block3_conv1')(x)
+        x = Conv2D(256, (3, 3), activation='relu', padding='same', name='block3_conv2')(x)
+        x = Conv2D(256, (3, 3), activation='relu', padding='same', name='block3_conv3')(x)
+        x = Conv2D(256, (3, 3), activation='relu', padding='same', name='block3_conv4')(x)
+        x = MaxPooling2D((2, 2), strides=(2, 2), name='block3_pool')(x)
+
+        # Block 4
+        x = Conv2D(512, (3, 3), activation='relu', padding='same', name='block4_conv1')(x)
+        x = Conv2D(512, (3, 3), activation='relu', padding='same', name='block4_conv2')(x)
+        x = Conv2D(512, (3, 3), activation='relu', padding='same', name='block4_conv3')(x)
+        x = Conv2D(512, (3, 3), activation='relu', padding='same', name='block4_conv4')(x)
+        x = MaxPooling2D((2, 2), strides=(2, 2), name='block4_pool')(x)
+
+        # Block 5
+        x = Conv2D(512, (3, 3), activation='relu', padding='same', name='block5_conv1')(x)
+        x = Conv2D(512, (3, 3), activation='relu', padding='same', name='block5_conv2')(x)
+        x = Conv2D(512, (3, 3), activation='relu', padding='same', name='block5_conv3')(x)
+        x = Conv2D(512, (3, 3), activation='relu', padding='same', name='block5_conv4')(x)
+        x = MaxPooling2D((2, 2), strides=(2, 2), name='block5_pool')(x)
+
+        if include_top:
+            # Classification block
+            x = Flatten(name='flatten')(x)
+            x = Dense(4096, activation='relu', name='fc1')(x)
+            x = Dense(4096, activation='relu', name='fc2')(x)
+            x = Dense(num_classes, activation='softmax', name='predictions')(x)
+        else:
+            if pooling == 'avg':
+                x = GlobalAveragePooling2D()(x)
+            elif pooling == 'max':
+                x = GlobalMaxPooling2D()(x)
+
+        model = ModelKeras(img_input, x, name='vgg19')
 
         model.compile(loss='binary_crossentropy',
                       optimizer='rmsprop',

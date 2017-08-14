@@ -1,13 +1,13 @@
 {
   "image": {
-    "resize": [150, 150],
+    "resize": [244, 244],
     "num_channel": 3,
     "rescale": 255,
-    "batch_size": 4,
+    "batch_size": 2,
     "class_mode": "binary"
   },
   "train": {
-    "num_epoch": 5,
-    "model": "simple_keras"
+    "num_epoch": 4,
+    "model": "VGG19"
   }
 }
