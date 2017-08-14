@@ -1,5 +1,7 @@
 BINARY = 'binary'
 CATEGORICAL = 'categorical'
+MODEL = 'model'
+PATH = 'path'
 
 
 class Image(object):

@@ -1,9 +1,14 @@
-from config import config
-import tensorflow as tf
+from keras.models import load_model
 from model import Model
-from images import ImageGenerator, ImageGeneratorKeras
+from PIL import Image as pil_image
+from tensorflow.contrib.keras.api.keras.preprocessing import image
+import numpy as np
+import tensorflow as tf
 
+from config import config
 from constant import Train, Image
+from images import ImageGenerator, ImageGeneratorKeras
+from util import MODEL_PATH
 
 
 class Pipelines(object):
@@ -34,8 +39,24 @@ class Pipelines(object):
                 validation_steps=4
             )
 
+            model_.save(MODEL_PATH)
+
             coord.request_stop()
             coord.join(threads)
+
+    def keras_predict(self, image_path):
+        if not image_path:
+            return 'You must pass an image'
+
+        img = pil_image.open(image_path)
+        if img.size != tuple(self._config[Image.IMAGE][Image.RESIZE]):
+            img = img.resize(tuple(self._config[Image.IMAGE][Image.RESIZE]))
+            x = image.img_to_array(img)
+            x = np.expand_dims(x, axis=0)
+            self.model = load_model(MODEL_PATH)
+            prediction = self.model.predict_classes(x)
+            return prediction
+
 
     def tensor_flow(self):
         x = tf.placeholder(tf.float32, shape=[None, 150, 150, 3], name='inputs')
@@ -98,4 +119,4 @@ class Pipelines(object):
 
 if __name__ == '__main__':
     pipeline = Pipelines()
-    pipeline.keras()
+    pipeline.keras_predict()
