@@ -1,4 +1,7 @@
 .ipynb_checkpoints/
+*.DS_Store
+.idea/
+*.pyc
 logs/
 MNIST_data/
-images/
+images/*
