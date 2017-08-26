@@ -3,11 +3,11 @@
     "resize": [244, 244],
     "num_channel": 3,
     "rescale": 255,
-    "batch_size": 2,
-    "class_mode": "binary"
+    "batch_size": 128,
+    "class_mode": "categorical"
   },
   "train": {
-    "num_epoch": 2,
+    "num_epoch": 100,
     "model": "InceptionV3"
   }
 }

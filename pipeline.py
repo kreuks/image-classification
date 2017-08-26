@@ -1,14 +1,14 @@
-from keras.models import load_model
-from model import Model
-from PIL import Image as pil_image
-from tensorflow.contrib.keras.api.keras.preprocessing import image
 import numpy as np
 import tensorflow as tf
+from PIL import Image as pil_image
+from src.config import config
+from keras.models import load_model
+from tensorflow.contrib.keras.api.keras.preprocessing import image
+from src.util import MODEL_PATH
 
-from config import config
-from constant import Train, Image
-from images import ImageGenerator, ImageGeneratorKeras
-from util import MODEL_PATH
+from src.constant import Train, Image
+from src.images import ImageGenerator, ImageGeneratorKeras
+from src.model import Model
 
 
 class Pipelines(object):
@@ -36,7 +36,8 @@ class Pipelines(object):
                 steps_per_epoch=self._config[Image.IMAGE][Image.BATCH_SIZE],
                 epochs=self.num_epoch,
                 validation_data=test,
-                validation_steps=4
+                validation_steps=4,
+                use_multiprocessing=True
             )
 
             model_.save(MODEL_PATH)
@@ -58,8 +59,8 @@ class Pipelines(object):
             return prediction
 
     def tensor_flow(self):
-        x = tf.placeholder(tf.float32, shape=[None, 150, 150, 3], name='inputs')
-        y_actual = tf.placeholder(tf.float32, shape=[None, 2], name='labels')
+        x = tf.placeholder(tf.float32, shape=[None, 244, 244, 3], name='inputs')
+        y_actual = tf.placeholder(tf.float32, shape=[None, 12], name='labels')
         is_training = tf.placeholder(tf.bool, name='is_training')
         image_generator = ImageGenerator(config=config)
         image_batch_train, label_batch_train, image_batch_test, label_batch_test = image_generator.flow_directory(
