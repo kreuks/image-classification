@@ -30,7 +30,7 @@ class Pipelines(object):
             coord = tf.train.Coordinator()
             threads = tf.train.start_queue_runners(coord=coord)
 
-            model_ = self.model(input_shape=(244, 244, 3))
+            model_ = self.model(input_shape=(244, 244, 3), classes=12)
             model_.fit_generator(
                 train,
                 steps_per_epoch=self._config[Image.IMAGE][Image.BATCH_SIZE],
