@@ -22,8 +22,8 @@ class Pipelines(object):
         image_batch_train, label_batch_train, image_batch_test, label_batch_test = image_generator.flow_directory(
             'images/catdog'
         )
-        test = ImageGeneratorKeras(self._config).load_train_data('images/catdog/testing_data')
-        train = ImageGeneratorKeras(self._config).load_train_data('images/catdog/training_data')
+        test = ImageGeneratorKeras(self._config).load_train_data('images/car_color/testing_data')
+        train = ImageGeneratorKeras(self._config).load_train_data('images/car_color/training_data')
         init = tf.global_variables_initializer()
         with tf.Session() as sess:
             sess.run(init)
@@ -36,7 +36,7 @@ class Pipelines(object):
                 steps_per_epoch=self._config[Image.IMAGE][Image.BATCH_SIZE],
                 epochs=self.num_epoch,
                 validation_data=test,
-                validation_steps=4,
+                validation_steps=64,
                 use_multiprocessing=True
             )
 
