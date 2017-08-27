@@ -33,8 +33,8 @@ class Pipelines(object):
 
             model_ = self.model(input_shape=(244, 244, 3), classes=12)
             callback_ = keras.callbacks.ModelCheckpoint(
-                'model/weights.{epoch: 02d} - {val_acc: .2f}.hdf5',
-                monitor='val_loss', verbose=0, save_best_only=False,
+                'model/model_checkpoint.hdf5',
+                monitor='val_loss', verbose=0, save_best_only=True,
                 save_weights_only=False, mode='auto', period=1
             )
 
