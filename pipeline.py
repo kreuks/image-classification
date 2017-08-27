@@ -1,14 +1,15 @@
 import numpy as np
 import tensorflow as tf
+import keras
 from PIL import Image as pil_image
 from src.config import config
 from keras.models import load_model
 from tensorflow.contrib.keras.api.keras.preprocessing import image
-from src.util import MODEL_PATH
 
 from src.constant import Train, Image
 from src.images import ImageGenerator, ImageGeneratorKeras
 from src.model import Model
+from src.util import MODEL_PATH
 
 
 class Pipelines(object):
@@ -31,13 +32,20 @@ class Pipelines(object):
             threads = tf.train.start_queue_runners(coord=coord)
 
             model_ = self.model(input_shape=(244, 244, 3), classes=12)
+            callback_ = keras.callbacks.ModelCheckpoint(
+                'model/weights.{epoch: 02d} - {val_acc: .2f}.hdf5',
+                monitor='val_loss', verbose=0, save_best_only=False,
+                save_weights_only=False, mode='auto', period=1
+            )
+
             model_.fit_generator(
                 train,
                 steps_per_epoch=self._config[Image.IMAGE][Image.BATCH_SIZE],
                 epochs=self.num_epoch,
                 validation_data=test,
                 validation_steps=64,
-                use_multiprocessing=True
+                use_multiprocessing=True,
+                callbacks=[callback_]
             )
 
             model_.save(MODEL_PATH)
